@@ -1,0 +1,193 @@
+@page "/todo"
+@inject HttpClient http
+@inject NavigationManager navigationManager
+@using todo_blazor_auth.Shared.Models
+@using System.Text.Json
+@using System.Text
+
+<PageTitle>TODO List</PageTitle>
+
+<AuthorizeView>
+  <Authorized>
+    <h1 class="text-center">Insert a work todo</h1>
+
+    <EditForm Model="@WorkModel" OnSubmit="@HandleSubmit" Context="form_ctx">
+      <InputText id="name" @bind-Value="WorkModel.Name" class="form-control" />
+
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </EditForm>
+
+    <br />
+    @if (result == true)
+    {
+      <h1>Work added correctly</h1>
+    }
+    else if (result == false)
+    {
+      <h1>Error during adding work</h1>
+    }
+    @if (result_delete == true)
+    {
+      <h1>Work deleted correctly</h1>
+    }
+    else if (result_delete == false)
+    {
+      <h1>Error during deleting work</h1>
+    }
+    @if (result_update == true)
+    {
+      <h1>Work updated correctly</h1>
+    }
+    else if (result_update == false)
+    {
+      <h1>Error during updating work</h1>
+    }
+    <br />
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">ID</th>
+          <th scope="col">Work</th>
+          <th scope="col">Email</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var work in works)
+        {
+          <tr>
+            <th scope="row">@work.Id</th>
+            <td>@work.Name</td>
+            <td>@work.Email</td>
+            <td>
+              <button class="btn btn-danger" @onclick="@(() => DeleteWork(work.Id))">Delete</button>
+            </td>
+            <td>
+              <button class="btn btn-primary" @onclick="() => UpdateWork(work.Id, true)">Update</button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    <Modal @ref="modal">
+      <Title>Update work number: @SelectedWork.Id</Title>
+
+      <Body>
+        <EditForm Model="@SelectedWork" Context="form_ctx">
+          <InputText id="name" @bind-Value="SelectedWork.Name" class="form-control" />
+        </EditForm>
+      </Body>
+      <Footer>
+        <button type="button" class="btn btn-primary" @onclick="() => UpdateWork(null, false)">Save changes</button>
+      </Footer>
+    </Modal>
+  </Authorized>
+  <NotAuthorized>
+    <h1>Please execute <a href="/authentication/login">Login</a></h1>
+  </NotAuthorized>
+</AuthorizeView>
+
+@code {
+  private Work WorkModel = new();
+  private bool? result = null;
+  private bool? result_delete = null;
+  private bool? result_update = null;
+
+  private List<Work> works = new List<Work>();
+
+  private Modal modal { get; set; }
+
+  private Work SelectedWork { get; set; } = new Work();
+
+  private async Task<bool> LoadWorks()
+  {
+    try
+    {
+      works = await http.GetFromJsonAsync<List<Work>>($"{navigationManager.BaseUri}api/todo");
+      return true;
+    }
+    catch (System.Exception)
+    {
+      return false;
+    }
+  }
+
+  private async void HandleSubmit()
+  {
+    var user_json = JsonSerializer.Serialize(WorkModel);
+    var payload = new StringContent(user_json, Encoding.UTF8, "application/json");
+    var result_from_controller = await http.PostAsync($"{navigationManager.BaseUri}api/todo", payload);
+    if (result_from_controller.IsSuccessStatusCode)
+    {
+      result = true;
+      await LoadWorks();
+      StateHasChanged();
+    }
+    else
+    {
+      result = false;
+      StateHasChanged();
+    }
+  }
+
+  private async void DeleteWork(int WorkId)
+  {
+    var result = await http.DeleteAsync($"{navigationManager.BaseUri}api/todo/" + WorkId);
+    if (result.IsSuccessStatusCode)
+    {
+      result_delete = true;
+      result = null; // Cleanup old result
+      await LoadWorks();
+      StateHasChanged();
+    }
+    else
+    {
+      result_delete = false;
+      result = null; // Cleanup old result
+      StateHasChanged();
+    }
+  }
+
+  private async void UpdateWork(int? WorkId, bool only_modal)
+  {
+    if (only_modal)
+    {
+      if (WorkId != null)
+      {
+        SelectedWork = works.Where(w => w.Id == WorkId).FirstOrDefault();
+        if (SelectedWork != null)
+          modal.Open();
+        else
+          Console.WriteLine("NULL WORK");
+      }
+    }
+    else
+    {
+      var json_parsed = JsonSerializer.Serialize(SelectedWork);
+      var payload = new StringContent(json_parsed, Encoding.UTF8, "application/json");
+      var result = await http.PutAsync($"{navigationManager.BaseUri}api/todo/", payload);
+      modal.Close();
+      if (result.IsSuccessStatusCode)
+      {
+        result_update = true;
+        result = null;
+        result_delete = null;
+        await LoadWorks();
+        StateHasChanged();
+      }
+      else
+      {
+        result_update = false;
+        result = null;
+        result_delete = null;
+        StateHasChanged();
+      }
+    }
+
+  }
+
+  protected override async Task OnInitializedAsync()
+  {
+    await LoadWorks();
+  }
+}
