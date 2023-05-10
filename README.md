@@ -7,7 +7,7 @@
 Blazor, Entity Framework with SQLite, ASP.net core Identity and Bootstrap
 
 ## TODO
-- Improve security
+- <s>Improve security</s>
 - Properly log events
 - Refactor some parts of the code
 - Customize a bit login page

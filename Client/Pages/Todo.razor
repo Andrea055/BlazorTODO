@@ -13,8 +13,10 @@
 
     <EditForm Model="@WorkModel" OnSubmit="@HandleSubmit" Context="form_ctx">
       <InputText id="name" @bind-Value="WorkModel.Name" class="form-control" />
-
+  <br />
+  <div class="d-flex justify-content-center">
       <button type="submit" class="btn btn-primary">Submit</button>
+  </div>
     </EditForm>
 
     <br />

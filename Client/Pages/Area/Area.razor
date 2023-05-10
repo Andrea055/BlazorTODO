@@ -1,0 +1,35 @@
+@page "/area"
+@inject Auth auth
+
+<p>Welcome back @name</p>
+@if (exception != null)
+{
+    <Modal>
+    <Title>Unexpected exception</Title>
+
+    <Body>
+        <p>exception: @exception</p>
+    </Body>
+    <Footer>
+        <button class="btn btn-primary" @onclick="() => modal.Close()">Ok</button>
+    </Footer>
+</Modal>
+}
+@code {
+    private string name = "";
+    private Exception exception = null;
+    private Modal modal { get; set; }
+    protected async override Task OnInitializedAsync()
+    {
+        try
+        {
+            name = await auth.GetLoggedUserName();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex);
+            exception = ex;
+            modal.Open();
+        }
+    }
+}
