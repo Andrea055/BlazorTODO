@@ -18,6 +18,9 @@ namespace Server.Controllers
         private readonly ILogger<TodoController> _logger;
 
         private readonly string USER_NOT_FOUND_EXCEPTION = "User not found";
+    
+        private IActionResult NOT_AUTHORIZED () => StatusCode(401);
+        private IActionResult SERVER_ERROR () => StatusCode(500);
 
         public TodoController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, ILogger<TodoController> logger)
         {
@@ -54,7 +57,7 @@ namespace Server.Controllers
             catch (Exception ex)
             {
                 _logger.LogError("Error during POST", ex.ToString());
-                return StatusCode(500);
+                return SERVER_ERROR();
             }
         }
 
@@ -98,7 +101,7 @@ namespace Server.Controllers
                     }
                     else
                     {
-                        return StatusCode(401);
+                        return NOT_AUTHORIZED();
                     }
                 }
                 else
@@ -115,7 +118,7 @@ namespace Server.Controllers
                         _logger.LogError("Error during delete", ex.InnerException.ToString());
                 }
 
-                return StatusCode(500);
+                return SERVER_ERROR();
             }
         }
 
@@ -135,7 +138,7 @@ namespace Server.Controllers
                         await _context.SaveChangesAsync();
                         return Ok();
                     }else {
-                        return StatusCode(401);
+                        return NOT_AUTHORIZED();
                     }
                 }
                 else
@@ -150,7 +153,7 @@ namespace Server.Controllers
                 {
                     _logger.LogError("Error during update", ex.Message);
                 }
-                return StatusCode(500);
+                return SERVER_ERROR();
             }
         }
     }
