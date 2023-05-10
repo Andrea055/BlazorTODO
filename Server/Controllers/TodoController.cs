@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Server.Security;
 using todo_blazor_auth.Server.Data;
 using todo_blazor_auth.Shared.Models;
 
@@ -83,12 +84,22 @@ namespace Server.Controllers
 
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new Exception(USER_NOT_FOUND_EXCEPTION);
+                var user = await _userManager.FindByIdAsync(userId);    // Get User object
+
                 var work_to_delete = _context.Works.Where(work => work.Id == workId).FirstOrDefault();
-                if (work_to_delete != null)
+                if (work_to_delete != null && user != null)
                 {
-                    _context.Works.Remove(work_to_delete);
-                    await _context.SaveChangesAsync();
-                    return Ok();
+                    if (FirewallTODO.IsTheSameAuthor(user, work_to_delete))
+                    {
+                        _context.Works.Remove(work_to_delete);
+                        await _context.SaveChangesAsync();
+                        return Ok();
+                    }
+                    else
+                    {
+                        return StatusCode(401);
+                    }
                 }
                 else
                 {
@@ -112,20 +123,31 @@ namespace Server.Controllers
         {
             try
             {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new Exception(USER_NOT_FOUND_EXCEPTION);
+                var user = await _userManager.FindByIdAsync(userId);    // Get User object
+
                 var old_work = _context.Works.Where(work => work.Id == new_work.Id).FirstOrDefault();
-                if (old_work != null)
+                if (old_work != null && user != null)
                 {
-                    old_work.Name = new_work.Name;
-                    await _context.SaveChangesAsync();
-                    return Ok();
-                }else {
+                    if (FirewallTODO.IsTheSameAuthor(user, old_work))
+                    {
+                        old_work.Name = new_work.Name;
+                        await _context.SaveChangesAsync();
+                        return Ok();
+                    }else {
+                        return StatusCode(401);
+                    }
+                }
+                else
+                {
                     throw new Exception("Work not found");
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-                if(ex.Message != "Work not found"){
+                if (ex.Message != "Work not found")
+                {
                     _logger.LogError("Error during update", ex.Message);
                 }
                 return StatusCode(500);
